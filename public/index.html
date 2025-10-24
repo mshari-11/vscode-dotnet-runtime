@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title>شارك موقعك</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; direction: rtl; padding: 18px; }
+    .card { max-width: 720px; margin: auto; }
+    .btn { display:inline-block; padding:10px 14px; background:#0b5ed7; color:#fff; text-decoration:none; border-radius:6px; }
+    .muted { color: #666; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>طلب مشاركة الموقع</h2>
+    <p class="muted">عند فتح هذا الرابط ستُطلب منك الموافقة على مشاركة موقعك. سيُرسل الموقع فقط إذا وافقت صراحة.</p>
+
+    <div id="status">جاري انتظار الموافقة...</div>
+
+    <p style="margin-top:18px;"><a id="manualClose" href="thanks.html" class="btn" style="display:none">أغلق</a></p>
+
+    <hr />
+    <p class="muted">ملاحظة: لا تشارك هذا الرابط إلا مع من تثق به. تأكد من الحصول على موافقة الشخص قبل تتبعه.</p>
+  </div>
+
+  <script>
+    // اقرأ معرف الرابط من query string أو استخدم 'default'
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id') || params.get('token') || 'default';
+    const statusEl = document.getElementById('status');
+
+    function show(msg) { statusEl.textContent = msg; }
+
+    if (!('geolocation' in navigator)) {
+      show('المتصفح لا يدعم تحديد الموقع.');
+    } else {
+      show('طلب إذن الوصول للموقع...');
+      navigator.geolocation.getCurrentPosition(success, error, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+    }
+
+    function success(pos) {
+      const crd = pos.coords;
+      show('تم الحصول على الموقع، جارٍ الإرسال...');
+
+      fetch('/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, lat: crd.latitude, lng: crd.longitude, accuracy: crd.accuracy, timestamp: pos.timestamp })
+      }).then(r => r.json()).then(j => {
+        if (j && j.ok) {
+          show('تمت المشاركة بنجاح. شكراً لموافقتك.');
+          document.getElementById('manualClose').style.display = 'inline-block';
+        } else {
+          show('حدث خطأ أثناء الإرسال.');
+        }
+      }).catch(err => {
+        console.error(err);
+        show('خطأ في الإتصال بالخادم.');
+      });
+    }
+    function error(err) {
+      if (err.code === 1) show('رفضت إذن الوصول للموقع.');
+      else if (err.code === 3) show('انتهت مهلة الحصول على الموقع.');
+      else show('فشل الحصول على الموقع: ' + (err.message||err.code));
+    }
+  </script>
+</body>
+</html>

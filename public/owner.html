@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title>عرض الموقع</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>body{font-family:Arial;direction:rtl;padding:12px}#map{height:60vh;max-width:900px;margin:auto}</style>
+</head>
+<body>
+  <h2>لوحة عرض الموقع (ادخل id بالباراميتر)</h2>
+  <p class="muted">مثال: <code>?id=someToken</code></p>
+  <div id="map">جارٍ التحميل...</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id') || 'default';
+    const map = L.map('map').setView([24.7136, 46.6753], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    let marker;
+
+    async function fetchLatest() {
+      try {
+        const res = await fetch('/api/latest?id=' + encodeURIComponent(id));
+        const j = await res.json();
+        if (j && j.latest) {
+          const p = j.latest;
+          if (marker) marker.setLatLng([p.lat, p.lng]);
+          else marker = L.marker([p.lat, p.lng]).addTo(map);
+          map.setView([p.lat, p.lng], 15);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    fetchLatest();
+    // تحديث كل 10 ثواني
+    setInterval(fetchLatest, 10000);
+  </script>
+</body>
+</html>
